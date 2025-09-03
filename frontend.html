@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pakistan Micro-Finance Helper</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .urdu-text { font-family: 'Noto Nastaliq Urdu', system-ui; }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-in { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .bounce { animation: bounce 0.6s ease-in-out; }
+    @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen">
+  <div id="app" class="min-h-screen p-4">
+    <!-- Header -->
+    <div class="text-center mb-8 fade-in">
+      <h1 class="text-5xl font-bold text-white mb-2">
+        💰 Pakistan Micro-Finance Helper
+      </h1>
+      <p class="text-xl text-blue-200 urdu-text">
+        آپ کا ذاتی مالیاتی مددگار | Your Personal Finance Assistant
+      </p>
+      <div id="notification" class="mt-4 p-3 bg-blue-500/20 backdrop-blur-sm rounded-lg text-white border border-blue-400/30 slide-in hidden">
+        <span id="notification-text"></span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex flex-wrap justify-center gap-2 mb-8">
+      <button onclick="showTab('dashboard')" id="tab-dashboard" class="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-white text-indigo-900 shadow-lg bounce">
+        📊 Dashboard
+      </button>
+      <button onclick="showTab('add-entry')" id="tab-add-entry" class="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-white/20 text-white hover:bg-white/30">
+        ➕ Add Entry
+      </button>
+      <button onclick="showTab('goals')" id="tab-goals" class="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-white/20 text-white hover:bg-white/30">
+        🎯 Goals
+      </button>
+      <button onclick="showTab('entries')" id="tab-entries" class="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 bg-white/20 text-white hover:bg-white/30">
+        📋 History
+      </button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="dashboard-tab" class="space-y-6 fade-in">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-xl hover:scale-105 transition-transform">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-green-100 text-sm">Total Income</p>
+              <p id="total-income" class="text-3xl font-bold">₹0</p>
+            </div>
+            <div class="text-4xl">💵</div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-2xl text-white shadow-xl hover:scale-105 transition-transform">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-red-100 text-sm">Total Expense</p>
+              <p id="total-expense" class="text-3xl font-bold">₹0</p>
+            </div>
+            <div class="text-4xl">💸</div>
+          </div>
+        </div>
+
+        <div id="balance-card" class="p-6 rounded-2xl text-white shadow-xl hover:scale-105 transition-transform bg-gradient-to-br from-blue-500 to-blue-600">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-blue-100 text-sm">Balance</p>
+              <p id="total-balance" class="text-3xl font-bold">₹0</p>
+            </div>
+            <div id="balance-icon" class="text-4xl">📈</div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-xl hover:scale-105 transition-transform">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-purple-100 text-sm">Goal Progress</p>
+              <p id="goal-progress" class="text-3xl font-bold">0%</p>
+            </div>
+            <div class="text-4xl">🎯</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Advice Card -->
+      <div class="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 slide-in">
+        <h3 class="text-2xl font-bold text-white mb-4 flex items-center">
+          🤖 AI Financial Advice
+        </h3>
+        <div class="bg-white/90 p-4 rounded-xl">
+          <p id="ai-advice" class="text-gray-800 urdu-text whitespace-pre-line leading-relaxed">
+            Loading advice...
+          </p>
+        </div>
+        <div id="debt-advice" class="mt-4 bg-orange-100 p-4 rounded-xl hidden">
+          <p id="debt-advice-text" class="text-orange-800 urdu-text font-semibold"></p>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Category Breakdown -->
+        <div class="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 slide-in">
+          <h3 class="text-xl font-bold text-white mb-4">📊 Category Breakdown</h3>
+          <canvas id="categoryChart" width="400" height="300"></canvas>
+        </div>
+
+        <!-- Inflation Impact -->
+        <div class="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 slide-in">
+          <h3 class="text-xl font-bold text-white mb-4">📈 Inflation Impact (6 months)</h3>
+          <div class="space-y-4">
+            <div class="bg-white/90 p-4 rounded-xl">
+              <p class="text-sm text-gray-600">Current Balance</p>
+              <p id="current-balance" class="text-2xl font-bold text-green-600">₹0</p>
+            </div>
+            <div class="bg-white/90 p-4 rounded-xl">
+              <p class="text-sm text-gray-600">Future Value (6 months)</p>
+              <p id="future-balance" class="text-2xl font-bold text-blue-600">₹0</p>
+            </div>
+            <div class="bg-white/90 p-4 rounded-xl">
+              <p class="text-sm text-gray-600">Inflation Loss</p>
+              <p id="inflation-loss" class="text-2xl font-bold text-red-600">₹0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goals Section -->
+      <div id="goals-section" class="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 fade-in hidden">
+        <h3 class="text-2xl font-bold text-white mb-4">🎯 Financial Goals</h3>
+        <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Entry Tab -->
+    <div id="add-entry-tab" class="max-w-2xl mx-auto fade-in hidden">
+      <div class="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20">
+        <h2 class="text-3xl font-bold text-white mb-6 text-center">
+          ➕ Add Financial Entry
+        </h2>
+        <form id="entry-form" class="space-y-6">
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Description / تفصیل
+            </label>
+            <input
+              type="text"
+              id="entry-description"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800 placeholder-gray-500"
+              placeholder="e.g., Grocery shopping / کریانہ کی خریداری"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Amount / رقم (PKR)
+            </label>
+            <input
+              type="number"
+              id="entry-amount"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800 placeholder-gray-500"
+              placeholder="1000"
+              min="0"
+              step="0.01"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Type / قسم
+            </label>
+            <select id="entry-type" class="w-full p-4 rounded-xl bg-white/90 text-gray-800">
+              <option value="income">Income / آمدنی</option>
+              <option value="expense">Expense / خرچہ</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Category / زمرہ
+            </label>
+            <input
+              type="text"
+              id="entry-category"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800 placeholder-gray-500"
+              placeholder="e.g., Food, Transport, Business / کھانا، ٹرانسپورٹ، کاروبار"
+            />
+          </div>
+
+          <button
+            type="submit"
+            id="entry-submit"
+            class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg"
+          >
+            Add Entry / اندراج شامل کریں
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Goals Tab -->
+    <div id="goals-tab" class="max-w-2xl mx-auto fade-in hidden">
+      <div class="bg-white/10 backdrop-blur-lg p-8 rounded-2xl border border-white/20">
+        <h2 class="text-3xl font-bold text-white mb-6 text-center">
+          🎯 Set Financial Goals
+        </h2>
+        <form id="goal-form" class="space-y-6">
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Goal Name / ہدف کا نام
+            </label>
+            <input
+              type="text"
+              id="goal-name"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800 placeholder-gray-500"
+              placeholder="e.g., Motorbike, Education, House / موٹرسائیکل، تعلیم، گھر"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Target Amount / ہدف رقم (PKR)
+            </label>
+            <input
+              type="number"
+              id="goal-amount"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800 placeholder-gray-500"
+              placeholder="50000"
+              min="0"
+              step="0.01"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-2">
+              Target Date / ہدف تاریخ
+            </label>
+            <input
+              type="date"
+              id="goal-date"
+              class="w-full p-4 rounded-xl bg-white/90 text-gray-800"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            id="goal-submit"
+            class="w-full py-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold rounded-xl hover:from-green-600 hover:to-blue-700 transition-all duration-300 shadow-lg"
+          >
+            Set Goal / ہدف مقرر کریں
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Entries History Tab -->
+    <div id="entries-tab" class="bg-white/10 backdrop-blur-lg p-6 rounded-2xl border border-white/20 fade-in hidden">
+      <h2 class="text-3xl font-bold text-white mb-6 text-center">
+        📋 Transaction History
+      </h2>
+      <div id="entries-list" class="space-y-3 max-h-96 overflow-y-auto">
+        <div class="text-center text-white py-8">
+          <p class="text-xl">Loading entries...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let currentTab = 'dashboard';
+    let summaryData = null;
+    let entriesData = [];
+    let categoryChart = null;
+
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', function() {
+      loadData();
+      setupEventListeners();
+    });
+
+    // Load all data
+    async function loadData() {
+      try {
+        await Promise.all([
+          loadSummary(),
+          loadEntries(),
+          loadNotification()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        showNotification('Error loading data. Make sure the backend is running on port 8000.', 'error');
+      }
+    }
+
+    // Load summary data
+    async function loadSummary() {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/summary/');
+        summaryData = response.data;
+        updateDashboard();
+        updateCategoryChart();
+      } catch (error) {
+        console.error('Error loading summary:', error);
+        throw error;
+      }
+    }
+
+    // Load entries
+    async function loadEntries() {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/entries/');
+        entriesData = response.data.entries || [];
+        updateEntriesList();
+      } catch (error) {
+        console.error('Error loading entries:', error);
+        throw error;
+      }
+    }
+
+    // Load notification
+    async function loadNotification() {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/notify/');
+        if (response.data.notification) {
+          showNotification(response.data.notification);
+        }
+      } catch (error) {
+        console.error('Error loading notification:', error);
+      }
+    }
+
+    // Update dashboard with summary data
+    function updateDashboard() {
+      if (!summaryData) return;
+
+      // Update summary cards
+      document.getElementById('total-income').textContent = `₹${summaryData.income.toLocaleString()}`;
+      document.getElementById('total-expense').textContent = `₹${summaryData.expense.toLocaleString()}`;
+      document.getElementById('total-balance').textContent = `₹${summaryData.balance.toLocaleString()}`;
+      document.getElementById('goal-progress').textContent = `${summaryData.goal_progress.toFixed(1)}%`;
+
+      // Update balance card color and icon
+      const balanceCard = document.getElementById('balance-card');
+      const balanceIcon = document.getElementById('balance-icon');
+      if (summaryData.balance >= 0) {
+        balanceCard.className = balanceCard.className.replace(/from-\w+-500 to-\w+-600/, 'from-blue-500 to-blue-600');
+        balanceIcon.textContent = '📈';
+      } else {
+        balanceCard.className = balanceCard.className.replace(/from-\w+-500 to-\w+-600/, 'from-orange-500 to-orange-600');
+        balanceIcon.textContent = '⚠️';
+      }
+
+      // Update AI advice
+      document.getElementById('ai-advice').textContent = summaryData.advice;
+
+      // Update debt advice
+      if (summaryData.debt_advice) {
+        document.getElementById('debt-advice-text').textContent = summaryData.debt_advice;
+        document.getElementById('debt-advice').classList.remove('hidden');
+      } else {
+        document.getElementById('debt-advice').classList.add('hidden');
+      }
+
+      // Update inflation impact
+      document.getElementById('current-balance').textContent = `₹${summaryData.inflation_impact.current_balance.toLocaleString()}`;
+      document.getElementById('future-balance').textContent = `₹${summaryData.inflation_impact.future_balance.toLocaleString()}`;
+      document.getElementById('inflation-loss').textContent = `₹${summaryData.inflation_impact.inflation_loss.toLocaleString()}`;
+
+      // Update goals section
+      updateGoalsSection();
+    }
+
+    // Update goals section
+    function updateGoalsSection() {
+      const goalsSection = document.getElementById('goals-section');
+      const goalsGrid = document.getElementById('goals-grid');
+
+      if (summaryData.goals && summaryData.goals.length > 0) {
+        goalsSection.classList.remove('hidden');
+        goalsGrid.innerHTML = '';
+
+        summaryData.goals.forEach((goal, index) => {
+          const progress = Math.min(100, (summaryData.balance / goal.target_amount) * 100);
+          const goalCard = document.createElement('div');
+          goalCard.className = 'bg-white/90 p-4 rounded-xl';
+          goalCard.innerHTML = `
+            <h4 class="font-bold text-lg text-gray-800">${goal.name}</h4>
+            <p class="text-gray-600">Target: ₹${parseFloat(goal.target_amount).toLocaleString()}</p>
+            <p class="text-gray-600">Date: ${goal.target_date}</p>
+            <div class="mt-2">
+              <div class="bg-gray-200 rounded-full h-2">
+                <div class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+              </div>
+              <p class="text-sm text-gray-600 mt-1">Progress: ${progress.toFixed(1)}%</p>
+            </div>
+          `;
+          goalsGrid.appendChild(goalCard);
+        });
+      } else {
+        goalsSection.classList.add('hidden');
+      }
+    }
+
+    // Update category chart
+    function updateCategoryChart() {
+      if (!summaryData || !summaryData.categories) return;
+
+      const ctx = document.getElementById('categoryChart').getContext('2d');
+      
+      // Destroy existing chart
+      if (categoryChart) {
+        categoryChart.destroy();
+      }
+
+      const chartData = Object.entries(summaryData.categories).map(([name, data]) => ({
+        name: name,
+        value: data.income + data.expense
+      }));
+
+      categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: chartData.map(item => item.name),
+          datasets: [{
+            data: chartData.map(item => item.value),
+            backgroundColor: [
+              '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: 'white',
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((context.parsed / total) * 100).toFixed(1);
+                  return `${context.label}: ₹${context.parsed.toLocaleString()} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Update entries list
+    function updateEntriesList() {
+      const entriesList = document.getElementById('entries-list');
+      
+      if (entriesData.length === 0) {
+        entriesList.innerHTML = `
+          <div class="text-center text-white py-8">
+            <p class="text-xl">No entries yet. Add some transactions to see them here!</p>
+          </div>
+        `;
+        return;
+      }
+
+      entriesList.innerHTML = '';
+      entriesData.forEach((entry, index) => {
+        const entryDiv = document.createElement('div');
+        entryDiv.className = `p-4 rounded-xl slide-in ${
+          entry.type === 'income' 
+            ? 'bg-green-100 border-l-4 border-green-500' 
+            : 'bg-red-100 border-l-4 border-red-500'
+        }`;
+        entryDiv.style.animationDelay = `${index * 0.1}s`;
+        
+        entryDiv.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="font-semibold text-gray-800">${entry.description}</h3>
+              <p class="text-sm text-gray-600">
+                ${entry.category || 'General'} • ${entry.date}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="font-bold text-lg ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                ${entry.type === 'income' ? '+' : '-'}₹${parseFloat(entry.amount).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        `;
+        entriesList.appendChild(entryDiv);
+      });
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+      const notification = document.getElementById('notification');
+      const notificationText = document.getElementById('notification-text');
+      
+      notificationText.textContent = message;
+      notification.classList.remove('hidden');
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        notification.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Tab switching
+    function showTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('[id$="-tab"]').forEach(tab => {
+        tab.classList.add('hidden');
+      });
+      
+      // Remove active class from all tab buttons
+      document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+        btn.className = btn.className.replace('bg-white text-indigo-900 shadow-lg bounce', 'bg-white/20 text-white hover:bg-white/30');
+      });
+      
+      // Show selected tab
+      document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+      
+      // Add active class to selected tab button
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      activeBtn.className = activeBtn.className.replace('bg-white/20 text-white hover:bg-white/30', 'bg-white text-indigo-900 shadow-lg bounce');
+      
+      currentTab = tabName;
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      // Entry form submission
+      document.getElementById('entry-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+          description: document.getElementById('entry-description').value,
+          amount: parseFloat(document.getElementById('entry-amount').value),
+          type: document.getElementById('entry-type').value,
+          category: document.getElementById('entry-category').value
+        };
+
+        if (!formData.description || !formData.amount) {
+          alert('Please fill in description and amount');
+          return;
+        }
+
+        try {
+          const submitBtn = document.getElementById('entry-submit');
+          submitBtn.textContent = 'Adding...';
+          submitBtn.disabled = true;
+
+          await axios.post('http://127.0.0.1:8000/add-entry/', formData);
+          
+          // Reset form
+          document.getElementById('entry-form').reset();
+          
+          // Reload data
+          await loadData();
+          
+          showNotification('Entry added successfully!');
+        } catch (error) {
+          console.error('Error adding entry:', error);
+          alert('Error adding entry: ' + (error.response?.data?.error || error.message));
+        } finally {
+          const submitBtn = document.getElementById('entry-submit');
+          submitBtn.textContent = 'Add Entry / اندراج شامل کریں';
+          submitBtn.disabled = false;
+        }
+      });
+
+      // Goal form submission
+      document.getElementById('goal-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+          name: document.getElementById('goal-name').value,
+          target_amount: parseFloat(document.getElementById('goal-amount').value),
+          target_date: document.getElementById('goal-date').value
+        };
+
+        if (!formData.name || !formData.target_amount || !formData.target_date) {
+          alert('Please fill in all goal fields');
+          return;
+        }
+
+        try {
+          const submitBtn = document.getElementById('goal-submit');
+          submitBtn.textContent = 'Adding...';
+          submitBtn.disabled = true;
+
+          await axios.post('http://127.0.0.1:8000/add-goal/', formData);
+          
+          // Reset form
+          document.getElementById('goal-form').reset();
+          
+          // Reload data
+          await loadData();
+          
+          showNotification('Goal added successfully!');
+        } catch (error) {
+          console.error('Error adding goal:', error);
+          alert('Error adding goal: ' + (error.response?.data?.error || error.message));
+        } finally {
+          const submitBtn = document.getElementById('goal-submit');
+          submitBtn.textContent = 'Set Goal / ہدف مقرر کریں';
+          submitBtn.disabled = false;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
